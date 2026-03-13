@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Task 06 — Clear Asteroids</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Share Tech Mono',monospace;background:#0a0e1a;color:#c8f0d0;min-height:100vh;padding:2rem 1rem;display:flex;align-items:center;justify-content:center;}
+.container{max-width:560px;width:100%;background:#0d1520;border:1px solid #2a4a3a;border-radius:12px;padding:2rem;}
+.task-num{font-size:.65rem;color:#3a5a4a;letter-spacing:2px;margin-bottom:.4rem;}
+.task-title{font-family:'Orbitron',monospace;color:#e8ff6b;font-size:1rem;margin-bottom:.2rem;letter-spacing:2px;}
+.task-room{font-size:.65rem;color:#3a5a4a;letter-spacing:2px;margin-bottom:1rem;}
+.task-desc{font-size:.75rem;color:#8ab09a;line-height:1.7;margin-bottom:1.4rem;}
+.game-frame{border:1px solid #1a3a2a;border-radius:8px;background:#060d14;padding:1rem;font-size:.75rem;}
+.result-banner{display:none;margin-top:.8rem;padding:.6rem 1rem;border-radius:6px;font-family:'Orbitron',monospace;font-size:.75rem;text-align:center;letter-spacing:1px;}
+.result-banner.win{background:#0a2a1a;color:#2ecc71;border:1px solid #0a4a2a;display:block;}
+.result-banner.lose{background:#2a0a0a;color:#e74c3c;border:1px solid #4a1a1a;display:block;}
+.restart-btn{display:block;width:100%;margin-top:1rem;padding:.7rem;background:#1a3a2a;color:#2ecc71;border:1px solid #2ecc71;border-radius:6px;font-family:'Orbitron',monospace;font-size:.7rem;font-weight:700;letter-spacing:2px;cursor:pointer;text-align:center;}
+.restart-btn:hover{background:#2ecc71;color:#0a0e1a;}
+#asteroidCanvas{width:100%;border-radius:6px;cursor:crosshair;display:block;}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="task-num">TASK 06 · MEDIUM</div>
+  <div class="task-title">🪨 Clear Asteroids</div>
+  <div class="task-room">WEAPONS — Top Floor · Gun Bay</div>
+  <div class="task-desc">Click/tap the asteroids before they reach the left edge. Destroy 20 to complete the task. Miss 5 and the task fails.</div>
+  <div class="game-frame" id="gameFrame"></div>
+  <div class="result-banner" id="resultBanner"></div>
+  <button class="restart-btn" id="restartBtn" style="display:none" onclick="start()">↺ RESTART TASK</button>
+</div>
+<script>
+let asteroidRAF=null;
+function stopAsteroidLoop(){if(asteroidRAF){cancelAnimationFrame(asteroidRAF);asteroidRAF=null;}}
+function taskComplete(){
+  stopAsteroidLoop();
+  document.getElementById('resultBanner').className='result-banner win';
+  document.getElementById('resultBanner').textContent='✔ TASK COMPLETE — GOOD WORK, CREWMATE';
+  document.getElementById('restartBtn').style.display='block';
+}
+function taskFailed(msg){
+  stopAsteroidLoop();
+  document.getElementById('resultBanner').className='result-banner lose';
+  document.getElementById('resultBanner').textContent='✘ '+(msg||'TASK FAILED — TRY AGAIN');
+  document.getElementById('restartBtn').style.display='block';
+}
+function start(){
+  stopAsteroidLoop();
+  document.getElementById('resultBanner').className='result-banner';
+  document.getElementById('resultBanner').textContent='';
+  document.getElementById('restartBtn').style.display='none';
+  const frame=document.getElementById('gameFrame');
+  frame.innerHTML=`<canvas id="asteroidCanvas" width="480" height="200"></canvas>
+    <div style="font-size:.65rem;color:#3a5a4a;margin-top:.4rem;letter-spacing:1px;">Click asteroids to destroy them — <span id="aScore">0</span>/20 destroyed &nbsp;|&nbsp; Missed: <span id="aMiss">0</span>/5</div>`;
+  const canvas=document.getElementById('asteroidCanvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  let destroyed=0,missed=0,done=false,asteroids=[],spawnTimer=0;
+  function spawn(){if(done)return;asteroids.push({x:W+20,y:20+Math.random()*(H-40),r:12+Math.random()*14,spd:1.2+Math.random()*1.8,rot:Math.random()*Math.PI*2,rotSpd:(Math.random()-.5)*.05});}
+  function loop(){
+    if(done){stopAsteroidLoop();return;}
+    ctx.clearRect(0,0,W,H);ctx.fillStyle='#060d14';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(200,240,208,.15)';
+    for(let s=0;s<30;s++){const sx=(s*73+Date.now()*.01)%W,sy=(s*41)%H;ctx.fillRect(sx,sy,1,1);}
+    spawnTimer++;if(spawnTimer%55===0)spawn();
+    asteroids=asteroids.filter(a=>{
+      a.x-=a.spd;a.rot+=a.rotSpd;
+      if(a.x+a.r<0){missed++;document.getElementById('aMiss').textContent=missed;if(missed>=5){done=true;taskFailed('Too many asteroids missed!');return false;}return false;}
+      ctx.save();ctx.translate(a.x,a.y);ctx.rotate(a.rot);ctx.fillStyle='#5a4a3a';ctx.strokeStyle='#8a7a6a';ctx.lineWidth=1.5;
+      ctx.beginPath();for(let p=0;p<7;p++){const ang=(p/7)*Math.PI*2,rr=a.r*(0.7+Math.sin(p*2.3)*.3);p===0?ctx.moveTo(Math.cos(ang)*rr,Math.sin(ang)*rr):ctx.lineTo(Math.cos(ang)*rr,Math.sin(ang)*rr);}
+      ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();return true;
+    });
+    document.getElementById('aScore').textContent=destroyed;
+    asteroidRAF=requestAnimationFrame(loop);
+  }
+  canvas.onclick=function(e){
+    if(done)return;
+    const rect=canvas.getBoundingClientRect();
+    const mx=(e.clientX-rect.left)*(W/rect.width),my=(e.clientY-rect.top)*(H/rect.height);
+    for(let i=asteroids.length-1;i>=0;i--){
+      const a=asteroids[i];
+      if(Math.hypot(mx-a.x,my-a.y)<a.r+8){
+        asteroids.splice(i,1);destroyed++;
+        ctx.save();ctx.globalAlpha=.6;ctx.fillStyle='#f39c12';ctx.beginPath();ctx.arc(mx,my,24,0,Math.PI*2);ctx.fill();ctx.restore();
+        if(destroyed>=20){done=true;taskComplete();}break;
+      }
+    }
+  };
+  spawn();spawn();asteroidRAF=requestAnimationFrame(loop);
+}
+start();
+</script>
+</body>
+</html>
